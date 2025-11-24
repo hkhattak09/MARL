@@ -17,7 +17,7 @@ from algorithm.algorithms import MADDPG
 
 def run(cfg):
     """
-    Main training function for MADDPG with video recording.
+    Main training function for MADDPG.
     
     Args:
         cfg: Configuration object containing training hyperparameters and settings
@@ -40,10 +40,6 @@ def run(cfg):
         live_ax.set_aspect('equal')
         live_ax.set_title('Live Training Render')
         print("Live rendering enabled - Display window will update during training")
-    
-    if cfg.video:
-        print(f"Video recording enabled via environment's internal system (ffmpeg)")
-        print(f"Videos will be saved to: {cfg.video_path}")
 
     ## ======================================= Initialize Environment =======================================
     torch.manual_seed(cfg.seed)
@@ -87,11 +83,6 @@ def run(cfg):
 
         obs = env.reset()
         
-        # Start video recording every 100th episode
-        record_this_episode = cfg.video and (ep_index % 100 == 0)
-        if record_this_episode:
-            env.env.start_recording(ep_index)
-        
         start_stop_num = [slice(0, env.n_a)]
         maddpg.prep_rollouts(device='cpu')
         maddpg.scale_noise(maddpg.noise, maddpg.epsilon)
@@ -99,11 +90,7 @@ def run(cfg):
 
         start_time_1 = time.time()
         for et_index in range(cfg.episode_length):
-            # Video recording - render every frame when recording
-            if record_this_episode:
-                env.render(mode='human')
-            
-            # Live rendering - update display every N frames (works even during video recording)
+            # Live rendering - update display every N frames
             if cfg.live_render and frame_count % 10 == 0:
                 frame = env.render(mode='rgb_array')
                 live_ax.clear()
@@ -127,10 +114,6 @@ def run(cfg):
             episode_reward_std_bar += np.std(rewards)
 
         end_time_1 = time.time()
-        
-        # Stop video recording if this was a recording episode
-        if record_this_episode:
-            env.env.stop_recording()
         
         start_time_2 = time.time()
 
@@ -189,8 +172,6 @@ def run(cfg):
     plt.close('all')
     
     print(f"\nTraining completed! Models saved to: {run_dir}")
-    if cfg.video:
-        print(f"Training videos saved to: {cfg.video_path}")
 
 
 if __name__ == '__main__':

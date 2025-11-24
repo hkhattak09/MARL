@@ -5,7 +5,6 @@ from gym import spaces
 from scipy.spatial.distance import pdist, squareform
 import numpy as np
 import matplotlib.pyplot as plt
-from .VideoWriter import VideoWriter
 import ctypes
 import pickle
 from .envs_cplus.c_lib import as_double_c_array, as_bool_c_array, as_int32_c_array, _load_lib
@@ -14,7 +13,7 @@ _LIB = _load_lib(env_name='Assembly')
 
 class AssemblySwarmEnv(gym.Env):
 
-    metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 45}
+    metadata = {"render.modes": ["human", "rgb_array"]}
     def __init__(self):
         
         self.reward_sharing_mode = 'individual'   # select one from ['sharing_mean', 'sharing_max', 'individual'] 
@@ -94,7 +93,6 @@ class AssemblySwarmEnv(gym.Env):
         self.render_traj = args.render_traj
         self.traj_len = args.traj_len
         self.is_collected = args.is_collected
-        self.video = args.video
 
         self.is_boundary = args.is_boundary
         if self.is_boundary:
@@ -147,12 +145,6 @@ class AssemblySwarmEnv(gym.Env):
         
         self.s_text = np.char.mod('%d',np.arange(self.n_a))
         self.color = np.tile(np.array([1, 0.5, 0]), (self.n_a, 1))
-        
-        # Store video settings but don't start recording yet
-        self.video_enabled = args.video
-        self.video_path = args.video_path
-        self.video = None  # Will be created when start_recording() is called
-        self.is_recording = False
 
         self.shape_frequency = np.zeros_like(self.l_cells)
 
@@ -224,25 +216,6 @@ class AssemblySwarmEnv(gym.Env):
         obs = self._get_obs()
 
         return obs
-
-    def start_recording(self, episode_num):
-        """Start video recording for the current episode."""
-        if self.video_enabled and not self.is_recording:
-            import os
-            os.makedirs(self.video_path, exist_ok=True)
-            video_file = os.path.join(self.video_path, f'episode_{episode_num}.mp4')
-            self.video = VideoWriter(output_rate=self.dt, fps=40)
-            self.video.video.setup(self.figure_handle, video_file)
-            self.is_recording = True
-            print(f"Started recording video: {video_file}")
-
-    def stop_recording(self):
-        """Stop video recording and save the file."""
-        if self.is_recording and self.video is not None:
-            self.video.close()
-            self.video = None
-            self.is_recording = False
-            print("Video recording stopped and saved")
 
     def _get_obs(self):
 
@@ -764,10 +737,6 @@ class AssemblySwarmEnv(gym.Env):
 
             plt.ioff()
             plt.pause(0.01)
-        
-        # Handle video recording when active (only for 'human' mode to avoid duplicates)
-        if self.is_recording and self.video is not None and mode == 'human':
-            self.video.update()
         
         # Return rgb_array if requested (for live rendering)
         if mode == 'rgb_array':

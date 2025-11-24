@@ -171,14 +171,6 @@ parser.add_argument("--agent_strategy", type=str, default='input', help="Agent c
 parser.add_argument("--training_method", default="llm_rl", type=str, choices=['llm_rl', 'pid', 'manual_rl', 'irl'],help="Training methodology")
 parser.add_argument("--is_collected", type=bool, default=False, help="Collect expert data for IRL or imitation learning")
 parser.add_argument("--results_file", type=type(results_file), default=results_file, help="Path to processed image results file")
-parser.add_argument("--video", default=True, type=bool, help="Enable video recording of simulations")
-parser.add_argument("--video_skip_frames", type=int, default=5, help="Record every N-th frame to reduce video size")
-parser.add_argument(
-    "--video_path",
-    type=str,
-    default=str(Path("./videos")),
-    help="Directory where raw simulation videos should be saved"
-)
 parser.add_argument(
     "--live_render",
     default=True,

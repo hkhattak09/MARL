@@ -10,14 +10,24 @@ setup(
     author_email='zhugb@buaa.edu.cn',  # Replace with your email
     packages=find_packages(exclude=['tests', 'docs']),  # Automatically find package directories
     install_requires=[
-        # List your package's dependencies here
-        # e.g., 'numpy>=1.19.2', 'requests>=2.25.1'
+        'numpy>=1.18.0',
+        'scipy>=1.4.1',
+        'pyglet>=1.4.0',
+        'matplotlib>=3.5.0',
+        'cloudpickle>=1.2.0',
     ],
     extras_require={
         'dev': [
-            # Development dependencies
-            'pytest>=6.0.0',  # For testing
-            'flake8>=3.8.4',  # For linting
+            'pytest>=6.0.0',
+            'pytest-forked>=1.3',
+            'flake8>=3.8.4',
+        ],
+        'optional': [
+            'atari-py==0.2.6',
+            'opencv-python>=3.',
+            'box2d-py~=2.3.5',
+            'mujoco_py>=1.50, <2.0',
+            'pygame>=2.0.0',
         ],
     },
     entry_points={
@@ -28,9 +38,17 @@ setup(
     },
     classifiers=[
         'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
         'License :: OSI Approved :: MIT License',  # Replace with your license if different
         'Operating System :: OS Independent',
     ],
-    python_requires='>=3.6',  # Specify the Python version
+    python_requires='>=3.6',  # Supports Python 3.6 through 3.13+
 )
 

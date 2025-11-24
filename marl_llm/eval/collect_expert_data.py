@@ -37,10 +37,6 @@ def run(cfg):
     run_dir = model_dir / curr_run      
     os.makedirs(run_dir)
 
-    # Configure video recording if enabled
-    if args.video:
-        args.video_path = str(run_dir) + '/video.mp4'
-
     # Initialize assembly swarm environment
     scenario_name = 'AssemblySwarm-v0'
     base_env = gym.make(scenario_name).unwrapped

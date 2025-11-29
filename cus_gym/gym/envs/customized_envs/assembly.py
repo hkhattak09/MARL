@@ -84,9 +84,9 @@ class AssemblySwarmEnv(gym.Env):
         self.plot_initialized = 0
         self.center_view_on_swarm = False
         self.fontsize = 20
-        width = 12 # 20
-        height = 12 # 20
-        self.figure_handle = plt.figure(figsize = (width,height))
+        self.fig_width = 12 # 20
+        self.fig_height = 12 # 20
+        self.figure_handle = None  # Lazy initialization - created on first render
 
     def __reinit__(self, args):
         self.n_a = args.n_a
@@ -665,6 +665,9 @@ class AssemblySwarmEnv(gym.Env):
         size_agents = 500 # 500 200
 
         if self.plot_initialized == 0:
+            # Create figure on first render if not already created (lazy initialization)
+            if self.figure_handle is None:
+                self.figure_handle = plt.figure(figsize=(self.fig_width, self.fig_height))
 
             plt.ion()
 
@@ -715,7 +718,7 @@ class AssemblySwarmEnv(gym.Env):
             
             # Plot target shape
             ax.scatter(self.grid_center[0,:], self.grid_center[1,:], s = 10, c = 'blue', marker = ".", alpha = 0.3)
-            plt.imshow(self.target_shape, cmap='gray', origin='lower', aspect='equal', alpha=0.1, 
+            ax.imshow(self.target_shape, cmap='gray', origin='lower', aspect='equal', alpha=0.1, 
                        extent=[self.shape_bound_points[0], self.shape_bound_points[1], self.shape_bound_points[2], self.shape_bound_points[3]])
             
             ax.plot(np.array([self.boundary_pos[0], self.boundary_pos[0], self.boundary_pos[2], self.boundary_pos[2], self.boundary_pos[0]]), 

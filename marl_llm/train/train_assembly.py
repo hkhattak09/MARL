@@ -31,15 +31,9 @@ def run(cfg):
     os.makedirs(log_dir, exist_ok=True)
     logger = SummaryWriter(str(log_dir))
 
-    # Setup live rendering
+    # Live rendering will be set up after environment creation to reuse its figure
     live_fig, live_ax = None, None
     frame_count = 0  # Counter for frame skipping in live render
-    if cfg.live_render:
-        plt.ion()  # Turn on interactive mode
-        live_fig, live_ax = plt.subplots(figsize=(8, 8))
-        live_ax.set_aspect('equal')
-        live_ax.set_title('Live Training Render')
-        print("Live rendering enabled - Display window will update during training")
 
     ## ======================================= Initialize Environment =======================================
     torch.manual_seed(cfg.seed)
@@ -63,6 +57,21 @@ def run(cfg):
     env = AssemblySwarmWrapper(base_env, args)
     start_stop_num = [slice(0, env.num_agents)]
 
+    # Setup live rendering after environment creation to reuse its figure
+    if cfg.live_render:
+        # Close any pre-existing figures from environment init to avoid duplicates
+        if env.env.figure_handle is not None:
+            plt.close(env.env.figure_handle)
+        # Create a single figure for live rendering
+        plt.ion()  # Turn on interactive mode
+        live_fig, live_ax = plt.subplots(figsize=(8, 8))
+        live_ax.set_aspect('equal')
+        live_ax.set_title('Live Training Render')
+        # Replace environment's figure handle with our managed figure
+        env.env.figure_handle = live_fig
+        env.env.plot_initialized = 0  # Reset so render() reinitializes with new figure
+        print("Live rendering enabled - Single display window will update during training")
+
     adversary_alg = None
     maddpg = MADDPG.init_from_env(
         env, agent_alg=cfg.agent_alg, adversary_alg=adversary_alg,
@@ -80,6 +89,12 @@ def run(cfg):
     for ep_index in range(0, cfg.n_episodes, cfg.n_rollout_threads):
         episode_reward_mean_bar = 0
         episode_reward_std_bar = 0
+        
+        # Formation quality metrics accumulators
+        episode_coverage = 0
+        episode_uniformity = 0
+        episode_collisions = 0
+        episode_avg_dist_to_target = 0
 
         obs = env.reset()
         
@@ -90,7 +105,7 @@ def run(cfg):
 
         start_time_1 = time.time()
         for et_index in range(cfg.episode_length):
-            # Live rendering - update display every N frames
+            # Live rendering - update display every N frames using env's figure
             if cfg.live_render and frame_count % 10 == 0:
                 frame = env.render(mode='rgb_array')
                 live_ax.clear()
@@ -112,6 +127,12 @@ def run(cfg):
 
             episode_reward_mean_bar += np.mean(rewards)
             episode_reward_std_bar += np.std(rewards)
+            
+            # Accumulate formation quality metrics
+            episode_coverage += env.coverage_rate()
+            episode_uniformity += env.distribution_uniformity()
+            episode_collisions += env.count_collisions()
+            episode_avg_dist_to_target += env.average_distance_to_target()
 
         end_time_1 = time.time()
         
@@ -141,17 +162,38 @@ def run(cfg):
         end_time_2 = time.time()
 
         if ep_index % 10 == 0:
+            # Calculate average formation metrics for the episode
+            avg_coverage = episode_coverage / cfg.episode_length
+            avg_uniformity = episode_uniformity / cfg.episode_length
+            avg_collisions = episode_collisions / cfg.episode_length
+            avg_dist_to_target = episode_avg_dist_to_target / cfg.episode_length
+            
             print(f"Episodes {ep_index} of {cfg.n_episodes}, agent num: {env.n_a}, "
                   f"episode reward: {episode_reward_mean_bar/cfg.episode_length:.3f}, "
+                  f"coverage: {avg_coverage:.3f}, collisions: {avg_collisions:.1f}, "
                   f"step time: {end_time_1 - start_time_1:.3f}, "
                   f"training time: {end_time_2 - start_time_2:.3f}")
 
         if ep_index % cfg.save_interval == 0:
+            # Calculate average formation metrics for the episode
+            avg_coverage = episode_coverage / cfg.episode_length
+            avg_uniformity = episode_uniformity / cfg.episode_length
+            avg_collisions = episode_collisions / cfg.episode_length
+            avg_dist_to_target = episode_avg_dist_to_target / cfg.episode_length
+            
             ALIGN_epi = 0
             logger.add_scalars('agent/data', {
                 'episode_reward_mean_bar': episode_reward_mean_bar/cfg.episode_length,
                 'episode_reward_std_bar': episode_reward_std_bar/cfg.episode_length,
                 'ALIGN_epi': ALIGN_epi
+            }, ep_index)
+            
+            # Log formation quality metrics
+            logger.add_scalars('agent/formation', {
+                'coverage_rate': avg_coverage,
+                'distribution_uniformity': avg_uniformity,
+                'num_collisions': avg_collisions,
+                'avg_distance_to_target': avg_dist_to_target
             }, ep_index)
 
         if ep_index % (4*cfg.save_interval) < cfg.n_rollout_threads:

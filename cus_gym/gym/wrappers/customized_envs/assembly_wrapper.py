@@ -127,3 +127,61 @@ class AssemblySwarmWrapper(gym.Wrapper):
         metric_3 = (uniform - np.min(num_grid_in_voronoi)) / (np.max(num_grid_in_voronoi) - np.min(num_grid_in_voronoi))
 
         return metric_3
+
+    def count_collisions(self):
+        """
+        Count the number of agent-to-agent collisions.
+        
+        A collision is detected when two agents are closer than their combined sizes.
+        Uses the is_collide_b2b matrix computed by the environment.
+        
+        Returns:
+            int: Number of unique collision pairs
+        """
+        # is_collide_b2b is a symmetric matrix, count upper triangle only
+        collision_matrix = self.env.is_collide_b2b
+        # Count unique collisions (upper triangle, excluding diagonal)
+        num_collisions = np.sum(np.triu(collision_matrix, k=1))
+        return int(num_collisions)
+
+    def average_distance_to_target(self):
+        """
+        Calculate the average distance of agents to their nearest target grid cell.
+        
+        Returns:
+            float: Mean distance of all agents to their nearest target positions
+        """
+        total_distance = 0.0
+        
+        for agent_i in range(self.n_a):
+            # Calculate distance to all grid cells
+            rel_pos = self.grid_center - self.p[:, [agent_i]]
+            distances = np.linalg.norm(rel_pos, axis=0)
+            
+            # Get minimum distance to nearest target cell
+            min_distance = np.min(distances)
+            total_distance += min_distance
+        
+        return total_distance / self.n_a
+
+    def get_formation_metrics(self):
+        """
+        Get all formation quality metrics in a single call.
+        
+        This is more efficient when logging multiple metrics per step.
+        
+        Returns:
+            dict: Dictionary containing all formation metrics:
+                - coverage_rate: Fraction of grid cells occupied
+                - distribution_uniformity: Uniformity of agent spacing
+                - voronoi_uniformity: Uniformity based on Voronoi cells
+                - num_collisions: Number of collision pairs
+                - avg_distance_to_target: Mean distance to target cells
+        """
+        return {
+            'coverage_rate': self.coverage_rate(),
+            'distribution_uniformity': self.distribution_uniformity(),
+            'voronoi_uniformity': self.voronoi_based_uniformity(),
+            'num_collisions': self.count_collisions(),
+            'avg_distance_to_target': self.average_distance_to_target()
+        }
